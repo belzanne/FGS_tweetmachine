@@ -42,100 +42,14 @@ AUTHORIZED_TYPES = ["game", "dlc", 'demo', 'beta', '']
 #filtrer les jeux à tweeter
 
 
-def search_brave(query, max_results=5):
-    BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY")
-    
-    headers = {
-        "X-Subscription-Token": BRAVE_API_KEY,
-        "Accept": "application/json"
-    }
-    
-    url = "https://api.search.brave.com/res/v1/web/search"
-    params = {
-        "q": query,
-        "count": max_results
-    }
-    
-    def make_request():
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    
-    try:
-        results = retry_request(make_request)
-        web_results = results.get('web', {}).get('results', [])
-        return pd.DataFrame([{
-            'title': result.get('title', ''),
-            'url': result.get('url', ''),
-            'description': result.get('description', '')
-        } for result in web_results])
-    except RequestException as e:
-        print(f"Erreur lors de la recherche Brave après plusieurs tentatives: {e}")
-        return pd.DataFrame()
+
+# %%
+import modules.x_handle_scrapping as x_handle_scrapping
+print(x_handle_scrapping.studio_x_handle_retrieve_pipeline("Ishtar Games"))
 
 
 
-from difflib import SequenceMatcher
-
-def name_similarity(name1, name2):
-    return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
-
-
-
-def studio_x_handle_retrieve_pipeline(studio_name):
-    search_query = f"{studio_name} twitter"
-    results_df = search_brave(search_query)
-    
-    if results_df.empty:
-        logging.info(f"Aucun résultat trouvé pour {studio_name}")
-        return None
-    
-    for index, row in results_df.iterrows():
-        if is_twitter_link(row['url']):
-            title = row['title']
-            url = row['url']
-            displayed_name, handle = extract_twitter_names(title)
-            
-            # Si le handle n'est pas trouvé dans le titre, essayez de l'extraire de l'URL
-            if not handle:
-                handle = extract_twitter_handle(url)
-            
-            if not handle:
-                continue
-            
-            similarity_displayed = name_similarity(studio_name, displayed_name)
-            similarity_handle = name_similarity(studio_name.replace(" ", "").lower(), handle.lower())
-            
-            logging.info(f"Comparaison pour {studio_name}: displayed '{displayed_name}' (score: {similarity_displayed}), handle '@{handle}' (score: {similarity_handle})")
-            
-            # Vérifiez si le handle correspond exactement au nom du studio (insensible à la casse)
-            if studio_name.lower() == handle.lower():
-                return handle
-            
-            # Sinon, utilisez les scores de similarité
-            if (similarity_displayed >= 0.9 and similarity_handle >= 0.5) or (similarity_displayed >= 0.5 and similarity_handle >= 0.9):
-                return handle
-    
-    logging.info(f"Aucun handle Twitter trouvé avec un score de similarité suffisant pour {studio_name}")
-    return None
-
-def extract_twitter_names(title):
-    # Essayez d'abord le format standard
-    match = re.search(r'(.*?)\s*\(@(\w+)\)', title)
-    if match:
-        return match.group(1).strip(), match.group(2)
-    
-    # Si ça ne marche pas, essayez d'extraire directement de l'URL
-    match = re.search(r'twitter\.com/(\w+)', title)
-    if match:
-        return title, match.group(1)
-    
-    # Si toujours rien, retournez le titre comme nom affiché et essayez d'extraire un nom d'utilisateur
-    possible_handle = re.search(r'@(\w+)', title)
-    if possible_handle:
-        return title, possible_handle.group(1)
-    
-    return title, None
+# %%
 
 
 

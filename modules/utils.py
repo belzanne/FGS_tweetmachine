@@ -35,17 +35,16 @@ def clean_text(text):
     cleaned_text = ' '.join(decoded_text.split())
     return cleaned_text
 
-def retry_request(func, max_retries=3, delay=1):
+def retry_request(func, *args, max_retries=3, delay=1, **kwargs):
     for attempt in range(max_retries):
         try:
-            return func()
+            return func(*args, **kwargs)
         except RequestException as e:
             if attempt == max_retries - 1:
                 raise
             print(f"Tentative {attempt + 1} échouée. Nouvelle tentative dans {delay} secondes...")
             time.sleep(delay)
             delay *= 2
-
 
 def parse_release_date(date_str):
     if date_str in ["Coming soon", "To be announced"]:
